@@ -108,7 +108,10 @@ let coding = `Halo kak!
 
 Dengan segala kerendahan hati, kami ingin mengundang kakak di Momen Spesial kami..
 
-Yang berbahagia,
+Pernikahan Sobirin & Qoris
+pada hari Sabtu, 12 Februari 2022.
+
+yang berbahagia,
 Sobirin & Qoris .`;
   // console.log(coding);
   let i = 0;
