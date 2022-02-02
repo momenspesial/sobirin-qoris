@@ -19,7 +19,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 	window.addEventListener("scroll",function(n){
     playTyping();
-  });
+	});
+	if(guestName!="Tamu Undangan"){
+		$('#formGuestBook input[name="nama"]').prop('readonly', true);
+	}
 });
 
 function playMusic(){
@@ -68,9 +71,9 @@ simplyCountdown('.simply-countdown-one', {
 $('#header .display-tc .guest-name').html(guestName);
 $('#invitation b.guest-name').html((guestName=="Tamu Undangan")?'':guestName);
 $('#header .display-tc .guest-place').html(guestPlace);
-$('#formGuestBook input[name="guestName"]').val((guestName=="Tamu Undangan")?'':guestName);
-$('#formGuestBook input[name="guestRef"]').val(guestRef);
-$('#formGuestBook input[name="guestPlace"]').val(guestPlace);
+$('#formGuestBook input[name="nama"]').val((guestName=="Tamu Undangan")?'':guestName);
+$('#formGuestBook input[name="mempelai"]').val(guestRef);
+$('#formGuestBook input[name="alamat"]').val(guestPlace);
 
 // window.addEventListener("contextmenu", function(e) {
 // 		e.preventDefault()
@@ -172,17 +175,87 @@ $(".btn-copy-norek").on("click", function() {
 	copyToClipboard(elem);
 });
 
-
+const apiGAS = "https://script.google.com/macros/s/AKfycbyQHM8bAfI3H9NNKZKc7a7N5sMnZ1zkyj0InGLkqJRBI808xGdj4xd8TjD5ZRu3E5FY/exec";
 const templateUcapanBox = (data) => `
   <div class="ucapan-box">
     <img class="ucapan-img" src="images/default-user.png" style="object-fit:cover;border:5px solid #ffb72d">
-    <h3 class="ucapan-name">${data.item.guestName}</h3>
+    <h3 class="ucapan-name">${data.nama}</h3>
     <p class="ucapan-info">
-			<small class="badge rounded-pill bg-secondary">${data.item.guestPlace}</small>
-			<small class="badge badge-${(data.item.guestPresence=='hadir')?'success':'danger'}"">${data.item.guestPresence}</small>
+			<small class="badge rounded-pill bg-secondary">${data.alamat}</small>
+			<small class="badge badge-${(data.kehadiran=='hadir')?'success':'danger'}"">${data.kehadiran}</small>
     </p>
-    <span class="ucapan-date">${new Date(data.item.timestamp).toLocaleString("en-US", {timeZone: "Asia/Jakarta"})}</span>
-    <p class="ucapan-msg" style="clear:both">${data.item.guestMsg}</p>
+    <span class="ucapan-date">${new Date(data.waktu_input).toLocaleString("en-US", {timeZone: "Asia/Jakarta"})}</span>
+    <p class="ucapan-msg" style="clear:both">${data.ucapan}</p>
   </div>
 `;
 const ucapanContainer = $('#ucapan-container');
+
+function getUcapanData() {
+  $.ajax({
+    url: apiGAS,
+    type: 'get',
+    dataType: 'json',
+    beforeSend: function(){
+    },
+    complete: function(){
+    },
+    success: function(response){
+			ucapanContainer.html("");
+      if(response && Object.keys(response.data).length > 0){
+        Object.keys(response.data).forEach(function(item){
+          let dataItem = response.data[item];
+					if(dataItem.publikasi == "ya"){
+						ucapanContainer.append([dataItem].map(templateUcapanBox));
+					}
+        });
+      }
+    },
+    error: function(e){
+    }
+  });
+}
+getUcapanData();
+
+
+$(document).on('click', '#formGuestBook button', function(event){
+	event.preventDefault();
+	let kehadiran = $(this).data('kehadiran');
+	let form = $('#formGuestBook');
+	$.ajax({
+		url: apiGAS,
+		type: form.attr('method'),
+		data: form.serialize()+'&kehadiran='+kehadiran+'&guestAgent='+navigator.userAgent+'&urlReferrer='+document.referrer+'&urlLocation='+window.location.href,
+		dataType: 'json',
+		beforeSend: function(){
+			form.find('button').attr('disabled',true);
+			form.find('button').html('Processing...');
+		},
+		complete: function(){
+			form.find('button').attr('disabled',false);
+			form.find('button[data-kehadiran="berhalangan"]').html('Saya berhalangan hadir');
+			form.find('button[data-kehadiran="hadir"]').html('Saya akan hadir');
+		},
+		success: function(response){
+			getUcapanData();
+			let greeting = "";
+			if(kehadiran=="hadir"){
+				greeting = 'Terima kasih <b>'+form.find('input[name="nama"]').val()+'</b> telah menulis ucapan.<br>Sampai jumpa di hari bahagia kami..';
+			}else if(kehadiran=="berhalangan"){
+				greeting = 'Terima kasih <b>'+form.find('input[name="nama"]').val()+'</b> telah menulis ucapan.<br>Kami maklum akan kehadiranmu,<br>Sampai jumpa dikesempatan lain ya!';
+			}
+			Swal.fire({
+				title: 'Terima asih!',
+				icon: 'success',
+				html: greeting,
+			});
+			form[0].reset();
+		},
+		error: function(e){
+			Swal.fire(
+				'Error',
+				'Maaf, ada kendala saat mengirim data. Mohon coba lagi!',
+				'error'
+			);
+		}
+	});
+});
